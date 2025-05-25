@@ -512,14 +512,14 @@
     function renderLabelsForParking() {
       if (selectedParking === 'חניון מקורה') {
         renderLabels([
-          { id: 'L_A', text: 'חניון מקורה', position: [15, 0, -4], color: 'transparent', image: 'assets/down_arrow.png', textAlign: 'right',size: { width: 80, height: 80 }  },
+          { id: 'L_A', text: 'חניון מקורה', position: [15, 0, -4], color: 'transparent', image: 'https://gizap.github.io/parking-app/down_arrow.png', textAlign: 'right',size: { width: 80, height: 80 }  },
           { id: 'B_A', position: [0.75,0,6], text:'מעליות', size: { width: 65, height: 120 }, color: "rgb(186,186,186)", textAlign: 'center' },
           { id: 'B_C', position: [8.2,0,6], text:'', size: { width: 65, height: 120 }, color: "rgb(186,186,186)" },
           { id: 'B_D', position: [-6.9,0,-2.9], text:'', size: { width: 110, height: 35 }, color: "rgb(186,186,186)" },
         ]);
       } else if (selectedParking === 'חניון פתוח תחתון') {
         renderLabels([
-          { id: 'L_A', text: 'חניון פתוח תחתון', position: [5, 0, 5], color: 'transparent', image: 'assets/left_arrow.webp',size: { width: 80, height: 80 } },
+          { id: 'L_A', text: 'חניון פתוח תחתון', position: [5, 0, 5], color: 'transparent', image: 'https://gizap.github.io/parking-app/left_arrow.webp',size: { width: 80, height: 80 } },
         ]);
       } else {
         renderLabels([]);
