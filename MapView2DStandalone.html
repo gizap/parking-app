@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parking Map 2D</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #fff;
+      min-height: 100vh;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      padding-bottom: 32px;
+      display: flex;
+      flex-direction: column;
+    }
+    .filter-container {
+      padding: 24px 24px 8px 24px;
+      border-bottom: 1px solid #e0e0e0;
+      background: #fff;
+    }
+    .filter-title {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 16px;
+    }
+    .parking-filters {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .filter-item {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+    .radio-outer {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #0066cc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 8px;
+      margin-top: 2px;
+    }
+    .radio-inner {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #0066cc;
+    }
+    .filter-text {
+      font-size: 1rem;
+    }
+    .map-container {
+      overflow-x: auto;
+      overflow-y: auto;
+      padding: 24px;
+      background: #f5f5f5;
+      flex: 1 1 auto;
+      height: 100%;
+    }
+    .parking-layout {
+      position: relative;
+      min-height: 500px;
+      min-width: 900px;
+      background: #f5f5f5;
+      padding: 16px;
+    }
+    .label {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      font-weight: bold;
+      font-size: 1.1rem;
+      background: rgba(255,255,255,0.8);
+      border-radius: 6px;
+      padding: 2px 8px;
+      z-index: 2;
+    }
+    .label img {
+      width: 24px;
+      height: 24px;
+      margin-right: 6px;
+    }
+    .parking-spot {
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      margin: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #222;
+      cursor: pointer;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+      transition: box-shadow 0.2s, border 0.2s;
+      position: absolute;
+      user-select: none;
+    }
+    .parking-spot.unavailable {
+      opacity: 0.4;
+      cursor: not-allowed;
+      text-decoration: line-through;
+    }
+    .parking-spot.selected {
+      border: 2px solid #0066cc;
+      box-shadow: 0 0 0 3px #b3d7ff;
+    }
+    .legend {
+      margin: 32px 24px 0 24px;
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1rem;
+    }
+    .legend-color {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      border: 1px solid #bbb;
+      display: inline-block;
+    }
+    @media (max-width: 900px) {
+      .parking-layout { min-width: 600px; }
+    }
+    @media (max-width: 600px) {
+      .container { padding: 0; }
+      .map-container { padding: 8px; }
+      .legend { margin: 24px 8px 0 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="filter-container">
+      <div class="filter-title">Car park map</div>
+      <div class="parking-filters" id="parkingFilters"></div>
+    </div>
+    <div class="map-container">
+      <div class="parking-layout" id="parkingLayout"></div>
+    </div>
+    <div class="legend" id="mapLegend"></div>
+  </div>
+  <!-- Reservation Modal -->
+  <div id="reservationModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);z-index:100;align-items:center;justify-content:center;">
+    <div style="background:#fff;padding:32px 24px 24px 24px;border-radius:12px;min-width:300px;max-width:90vw;box-shadow:0 2px 16px rgba(0,0,0,0.18);position:relative;">
+      <button id="closeModalBtn" style="position:absolute;top:8px;right:12px;font-size:1.2rem;background:none;border:none;cursor:pointer;">&times;</button>
+      <h2 id="modalSpotTitle" style="margin-top:0;margin-bottom:18px;font-size:1.3rem;">Reserve Spot</h2>
+      <label for="reservationDate">Select date:</label>
+      <input type="date" id="reservationDate" style="margin:12px 0 12px 0;padding:6px 10px;font-size:1rem;" />
+      <label for="reservationTime">Select time:</label>
+      <input type="time" id="reservationTime" style="margin:12px 0 24px 0;padding:6px 10px;font-size:1rem;" />
+      <button id="reserveBtn" style="background:#0066cc;color:#fff;padding:8px 18px;border:none;border-radius:6px;font-size:1rem;cursor:pointer;">Reserve</button>
+      <div id="reservationMsg" style="margin-top:16px;color:#388e3c;font-weight:bold;"></div>
+    </div>
+  </div>
+  <script>
+    // --- Data and Utility Functions ---
+    const PARKINGS = [
+      'חניון מקורה',
+      'חניון פתוח עליון',
+      'חניון פתוח תחתון'
+    ];
+
+    function getSpotType(color) {
+      switch (color) {
+        case '#2196F3': return 'Casual';
+        case '#FFC107': return 'Motobike';
+        case '#673AB7': return 'Visitor';
+        case '#D81B60': return 'Reserved';
+        default: return 'Other';
+      }
+    }
+
+    function generateParkingSpotsA() {
+      const sections = [
+        { id: 'P_A', rows: 15, color: '#E0E0E0', startCol: 0, startRow: 1,hideText: true },
+        { id: 'P_B', color: '#FFC107', startCol: 0, startRow: 16,hideText: true },
+        { id: 'P_C', color: '#616161', startCol: 0, startRow: 17,hideText: true },
+        { id: 'P_D', cols: 9, color: '#E0E0E0', startCol: 1, startRow: 17,hideText: true },
+        { id: 'P_E', color: '#616161', startCol: 10, startRow: 17,hideText: true },
+        { id: 'P_F', rows: 15, color: '#E0E0E0', startCol: 10, startRow: 2,hideText: true },
+        { id: 'P_G', cols: 3, color: '#616161', startCol: 0, startRow: 0,hideText: true },
+        { id: 'P_H', cols: 5, color: '#E0E0E0', startCol: 3, startRow: 0,hideText: true },
+        { id: 'P_I', rows: 3, cols: 2, color: '#616161', startCol: 3, startRow: 3,hideText: true },
+        { id: 'P_J', rows: 3, cols: 2, color: '#616161', startCol: 6, startRow: 3,hideText: true },
+        { id: 'P_K', rows: 9, cols: 2, color: '#E0E0E0', startCol: 3, startRow: 7,hideText: true },
+        { id: 'P_L', rows: 3, cols: 2, color: '#E0E0E0', startCol: 6, startRow: 13,hideText: true },
+        { id: 'R', rows: 6, cols: 2, color: '#D81B60', startCol: 6, startRow: 7,hideText: false,index: 2, available: true },
+        { id: 'R', color: '#D81B60', startCol: 7, startRow: 6,hideText: false,index: 1, available: true },
+      ];
+      let spots = [];
+      let globalIdx = 0;
+      sections.forEach(section => {
+        let sectionIdx = section.index!==undefined ? section.index : undefined;
+        const numRows = section.rows || 1;
+        const numCols = section.cols || 1;
+        for (let rowIdx = 0; rowIdx < numRows; rowIdx++) {
+          for (let colIdx = 0; colIdx < numCols; colIdx++) {
+            const spotId = sectionIdx!==undefined?`${section.id}${sectionIdx++}`:`${section.id}${globalIdx + 1}`;
+            let isAvailable = section.available !== undefined ? section.available : false;
+            let color = section.color;
+            if ([ 'R1','R7','R8','R9','R10','R11' ].includes(spotId)) isAvailable = false;
+            const col = section.startCol + colIdx;
+            const row = section.startRow + rowIdx;
+            spots.push({
+              id: spotId,
+              available: isAvailable,
+              color: color,
+              type: getSpotType(color),
+              position: [col * 2.5 - 7, -0.05, row * 3 - 6],
+              hideText: section.hideText!== undefined ? section.hideText : true 
+            });
+            globalIdx++;
+          }
+        }
+      });
+      return spots;
+    }
+
+    function generateParkingSpotsB() {
+      const sections = [
+        { id: 'B', rows: 14, color: '#E0E0E0', startCol: 0, startRow: 0 },
+        { id: 'D', rows: 6, color: '#E0E0E0', startCol: 0, startRow: 2 },
+        { id: 'M', rows: 8, color: '#D81B60', startCol: 0, startRow: 3 },
+        { id: 'C', rows: 10, color: '#FFC107', startCol: 0, startRow: 4 },
+        { id: 'A', rows: 24, color: '#E0E0E0', startCol: 0, startRow: 5 }
+      ];
+      let spots = [];
+      let globalIdx = 0;
+      sections.forEach((section, sectionIdx) => {
+        for (let i = 1; i <= section.rows; i++) {
+          const spotId = `${section.id}${i}`;
+          let isAvailable = Math.random() > 0.3;
+          let color = section.color;
+          if (spotId === 'B1' || spotId === 'B2') color = '#2196F3';
+          if (spotId.startsWith('M')) color = '#D81B60';
+          if (spotId.startsWith('C')) color = '#FFC107';
+          if (spotId === 'A11' || spotId === 'A13') color = '#2196F3';
+          if (spotId === 'A7' || spotId === 'A9') color = '#673AB7';
+          const col = i - 1;
+          const row = sectionIdx;
+          spots.push({
+            id: spotId,
+            available: isAvailable,
+            color: color,
+            type: getSpotType(color),
+            position: [col * 2.5 - 7, -0.05, row * 3 - 6],
+            hideText: section.hideText || false
+          });
+          globalIdx++;
+        }
+      });
+      return spots;
+    }
+
+    function generateParkingSpotsC() {
+      const sections = [
+        { id: 'C', cols:2, color: '#2196F3', startCol: 0, startRow: 0,hideText: false,index: 1, available: true },
+        { id: 'C', cols:4, color: '#2196F3', startCol: 0, startRow: 1,hideText: false,index: 3, available: true },
+        { id: 'C', color: '#2196F3', startCol: 0, startRow: 2,hideText: false,index: 7, available: true },
+        { id: 'P_A', color: '#E0E0E0', startCol: 4, startRow: 1},
+        { id: 'P_B', rows: 3, color: '#E0E0E0', startCol: 0, startRow: 3},
+        { id: 'P_C', rows: 2, color: '#E0E0E0', startCol: 3, startRow: 4},
+        { id: 'P_C', cols: 3, color: '#E0E0E0', startCol: 4, startRow: 6},
+      ];
+      let spots = [];
+      let globalIdx = 0;
+      sections.forEach(section => {
+        let sectionIdx = section.index!==undefined ? section.index : undefined;
+        const numRows = section.rows || 1;
+        const numCols = section.cols || 1;
+        for (let rowIdx = 0; rowIdx < numRows; rowIdx++) {
+          for (let colIdx = 0; colIdx < numCols; colIdx++) {
+            const spotId = sectionIdx!==undefined?`${section.id}${sectionIdx++}`:`${section.id}${globalIdx + 1}`;
+            let isAvailable = section.available !== undefined ? section.available : false;
+            let color = section.color;
+            if ([ 'R1','R7','R8','R9','R10','R11' ].includes(spotId)) isAvailable = false;
+            const col = section.startCol + colIdx;
+            const row = section.startRow + rowIdx;
+            spots.push({
+              id: spotId,
+              available: isAvailable,
+              color: color,
+              type: getSpotType(color),
+              position: [col * 2.5 - 7, -0.05, row * 3 - 6],
+              hideText: section.hideText!== undefined ? section.hideText : true 
+            });
+            globalIdx++;
+          }
+        }
+      });
+      return spots;
+    }
+
+    function generateParkingSpotsForParking(parking) {
+      if (parking === 'חניון מקורה') {
+        return generateParkingSpotsA();
+      } else if (parking === 'חניון פתוח עליון') {
+        return generateParkingSpotsB();
+      } else if (parking === 'חניון פתוח תחתון') {
+        return generateParkingSpotsC();
+      }
+      return [];
+    }
+
+    // --- State ---
+    let selectedParking = PARKINGS[0];
+    let parkingSpots = [];
+    let selectedSpotId = null;
+
+    // --- DOM Elements ---
+    const parkingFiltersDiv = document.getElementById('parkingFilters');
+    const parkingLayoutDiv = document.getElementById('parkingLayout');
+    const mapLegendDiv = document.getElementById('mapLegend');
+
+    // --- Reservation State ---
+    // { spotId: { 'YYYY-MM-DDTHH:MM': true } }
+    const reservations = {};
+    let modalCurrentSpot = null;
+
+    // --- Modal Functions ---
+    const reservationModal = document.getElementById('reservationModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const reserveBtn = document.getElementById('reserveBtn');
+    const reservationDateInput = document.getElementById('reservationDate');
+    const reservationTimeInput = document.getElementById('reservationTime');
+    const reservationMsg = document.getElementById('reservationMsg');
+    const modalSpotTitle = document.getElementById('modalSpotTitle');
+
+    closeModalBtn.onclick = () => {
+      reservationModal.style.display = 'none';
+      reservationMsg.textContent = '';
+      reservationDateInput.value = '';
+      reservationTimeInput.value = '';
+      modalCurrentSpot = null;
+    };
+
+    reserveBtn.onclick = () => {
+      if (!modalCurrentSpot) return;
+      const date = reservationDateInput.value;
+      const time = reservationTimeInput.value;
+      if (!date || !time) {
+        reservationMsg.style.color = '#d32f2f';
+        reservationMsg.textContent = 'Please select both date and time.';
+        return;
+      }
+      const dateTime = `${date}T${time}`;
+      if (!reservations[modalCurrentSpot.id]) reservations[modalCurrentSpot.id] = {};
+      if (reservations[modalCurrentSpot.id][dateTime]) {
+        reservationMsg.style.color = '#d32f2f';
+        reservationMsg.textContent = 'Spot already reserved for this date and time.';
+        return;
+      }
+      reservations[modalCurrentSpot.id][dateTime] = true;
+      reservationMsg.style.color = '#388e3c';
+      reservationMsg.textContent = 'Reservation successful!';
+      setTimeout(() => {
+        reservationModal.style.display = 'none';
+        reservationMsg.textContent = '';
+        reservationDateInput.value = '';
+        reservationTimeInput.value = '';
+        modalCurrentSpot = null;
+        renderSpots();
+      }, 1200);
+    };
+
+    // --- Render Functions ---
+    function renderFilters() {
+      parkingFiltersDiv.innerHTML = '';
+      PARKINGS.forEach(parking => {
+        const filter = document.createElement('div');
+        filter.className = 'filter-item';
+        filter.onclick = () => {
+          selectedParking = parking;
+          selectedSpotId = null;
+          renderAll();
+        };
+        const radioOuter = document.createElement('div');
+        radioOuter.className = 'radio-outer';
+        if (selectedParking === parking) {
+          const radioInner = document.createElement('div');
+          radioInner.className = 'radio-inner';
+          radioOuter.appendChild(radioInner);
+        }
+        const text = document.createElement('span');
+        text.className = 'filter-text';
+        text.textContent = parking;
+        filter.appendChild(radioOuter);
+        filter.appendChild(text);
+        parkingFiltersDiv.appendChild(filter);
+      });
+    }
+
+    function renderLegend() {
+      const legendData = [
+        { color: '#2196F3', label: 'Casual' },
+        { color: '#FFC107', label: 'Motobike' },
+        { color: '#673AB7', label: 'Visitor' },
+        { color: '#D81B60', label: 'Reserved' },
+        { color: '#E0E0E0', label: 'Other' },
+        { color: '#616161', label: 'Building' },
+      ];
+      mapLegendDiv.innerHTML = '';
+      legendData.forEach(item => {
+        const legendItem = document.createElement('div');
+        legendItem.className = 'legend-item';
+        const colorBox = document.createElement('span');
+        colorBox.className = 'legend-color';
+        colorBox.style.background = item.color;
+        legendItem.appendChild(colorBox);
+        legendItem.appendChild(document.createTextNode(item.label));
+        mapLegendDiv.appendChild(legendItem);
+      });
+    }
+
+    function renderLabels(labels) {
+      // Remove old labels
+      Array.from(parkingLayoutDiv.querySelectorAll('.label')).forEach(e => e.remove());
+      labels.forEach(label => {
+        const [col, , row] = label.position;
+        const left = ((col + 7) / 2.5) * 42;
+        const top = ((row + 6) / 3) * 42 - 40;
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'label';
+        labelDiv.style.left = left + 'px';
+        labelDiv.style.top = top + 'px';
+        if (label.size) {
+          if (label.size.width) labelDiv.style.width = label.size.width + 'px';
+          if (label.size.height) labelDiv.style.height = label.size.height + 'px';
+        }
+        if (label.image) {
+          const img = document.createElement('img');
+          img.src = label.image;
+          // Stretch the image to fill the label size if size is defined
+          if (label.size) {
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'contain';
+          }
+          labelDiv.appendChild(img);
+        }
+        // Set background color if provided
+        if (label.color) {
+          labelDiv.style.background = label.color;
+        }
+        // Set text alignment if provided
+        if (label.textAlign) {
+          labelDiv.style.justifyContent = label.textAlign === 'center' ? 'center' : (label.textAlign === 'right' ? 'flex-end' : 'flex-start');
+          labelDiv.style.textAlign = label.textAlign;
+        }
+        // Append text as a text node so it doesn't overwrite the image
+        labelDiv.appendChild(document.createTextNode(label.text));
+        parkingLayoutDiv.appendChild(labelDiv);
+      });
+    }
+
+    function renderSpots() {
+      Array.from(parkingLayoutDiv.querySelectorAll('.parking-spot')).forEach(e => e.remove());
+      const selectedDate = getSelectedDate();
+      const selectedTime = getSelectedTime();
+      const selectedDateTime = `${selectedDate}T${selectedTime}`;
+      parkingSpots.forEach(spot => {
+        const [col, , row] = spot.position;
+        const left = ((col + 7) / 2.5) * 42;
+        const top = ((row + 6) / 3) * 42;
+        const spotDiv = document.createElement('div');
+        spotDiv.className = 'parking-spot';
+        spotDiv.style.left = left + 'px';
+        spotDiv.style.top = top + 'px';
+        spotDiv.style.background = spot.color;
+        // Check reservation for this date and time
+        const reserved = reservations[spot.id] && reservations[spot.id][selectedDateTime];
+        if (!spot.available || reserved) spotDiv.classList.add('unavailable');
+        if (selectedSpotId === spot.id) spotDiv.classList.add('selected');
+        spotDiv.title = `${spot.id} (${spot.type})`;
+        spotDiv.textContent = spot.hideText ? '' : spot.id;
+        spotDiv.onclick = () => {
+          if (!spot.available || reserved) return;
+          // Open modal
+          modalCurrentSpot = spot;
+          modalSpotTitle.textContent = `Reserve Spot: ${spot.id}`;
+          reservationModal.style.display = 'flex';
+          reservationMsg.textContent = '';
+          reservationDateInput.value = '';
+          reservationTimeInput.value = '';
+        };
+        parkingLayoutDiv.appendChild(spotDiv);
+      });
+    }
+
+    function renderLabelsForParking() {
+      if (selectedParking === 'חניון מקורה') {
+        renderLabels([
+          { id: 'L_A', text: 'חניון מקורה', position: [15, 0, -4], color: 'transparent', image: 'assets/down_arrow.png', textAlign: 'right',size: { width: 80, height: 80 }  },
+          { id: 'B_A', position: [0.75,0,6], text:'מעליות', size: { width: 65, height: 120 }, color: "rgb(186,186,186)", textAlign: 'center' },
+          { id: 'B_C', position: [8.2,0,6], text:'', size: { width: 65, height: 120 }, color: "rgb(186,186,186)" },
+          { id: 'B_D', position: [-6.9,0,-2.9], text:'', size: { width: 110, height: 35 }, color: "rgb(186,186,186)" },
+        ]);
+      } else if (selectedParking === 'חניון פתוח תחתון') {
+        renderLabels([
+          { id: 'L_A', text: 'חניון פתוח תחתון', position: [5, 0, 5], color: 'transparent', image: 'assets/left_arrow.webp',size: { width: 80, height: 80 } },
+        ]);
+      } else {
+        renderLabels([]);
+      }
+    }
+
+    function renderAll() {
+      parkingSpots = generateParkingSpotsForParking(selectedParking);
+      renderFilters();
+      renderLabelsForParking();
+      renderSpots();
+      renderLegend();
+    }
+
+    function getSelectedDate() {
+      if (reservationModal.style.display === 'flex') {
+        return reservationDateInput.value || new Date().toISOString().slice(0,10);
+      }
+      return new Date().toISOString().slice(0,10);
+    }
+    function getSelectedTime() {
+      if (reservationModal.style.display === 'flex') {
+        return reservationTimeInput.value || '08:00';
+      }
+      return '08:00';
+    }
+
+    // --- Initial Render ---
+    renderAll();
+  </script>
+</body>
+</html>
