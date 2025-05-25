@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Pick a Resource</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+</head>
+<body>
+  <h3>Pick a Resource</h3>
+  <label>Resource Name:</label>
+  <input type="text" id="resourceName" placeholder="e.g., Projector A" /><br/><br/>
+
+  <label>Time (e.g., 3:00 PM):</label>
+  <input type="text" id="resourceTime" placeholder="e.g., 3:00 PM" /><br/><br/>
+
+  <button onclick="insertResource()">Insert into Event</button>
+
+  <script>
+    Office.onReady(() => {
+      console.log("Office is ready");
+    });
+
+    function insertResource() {
+      const name = document.getElementById('resourceName').value;
+      const time = document.getElementById('resourceTime').value;
+      const bodyText = `📅 Reserved Resource: ${name}\n🕒 Time: ${time}`;
+
+      Office.context.mailbox.item.body.setSelectedDataAsync(
+        bodyText,
+        { coercionType: Office.CoercionType.Text },
+        result => {
+          if (result.status === Office.AsyncResultStatus.Succeeded) {
+            alert("Inserted into event body.");
+          } else {
+            alert("Failed to insert: " + result.error.message);
+          }
+        }
+      );
+    }
+  </script>
+</body>
+</html>
