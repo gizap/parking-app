@@ -502,10 +502,10 @@
         const reader = new FileReader();
         reader.onloadend = function() {
           const base64data = reader.result; // This is a data URL with base64
-          console.log(base64data);
+          /*console.log(base64data);
           const outputDiv = document.getElementById('output');
           outputDiv.innerHTML = `<p>Reserved ${modalCurrentSpot.id} on ${date} at ${time} for ${hours} hour(s) ${minutes} minute(s}</p><img src="${base64data}" alt="Animated GIF" />`;
-          
+          */
           Office.context.mailbox.item.body.prependAsync(
             `<p>Reserved ${modalCurrentSpot.id} on ${date} at ${time} for ${hours} hour(s) ${minutes} minute(s)</p><img src="${base64data}" alt="Animated GIF" />`,
             { coercionType: Office.CoercionType.Html },
