@@ -385,77 +385,33 @@
         reservationMsg.textContent = 'Spot already reserved for this date and time.';
         return;
       }
+      reservations[modalCurrentSpot.id][dateTime] = { hours, minutes };
+      reservationMsg.style.color = '#388e3c';
+      reservationMsg.textContent = `Reservation successful! Duration: ${hours} hour(s) ${minutes} minute(s)`;
 
-      // Calculate end time
-      const [startHour, startMinute] = time.split(':').map(Number);
-      const totalMinutes = startHour * 60 + startMinute + parseInt(hours) * 60 + parseInt(minutes);
-      const endHour = Math.floor(totalMinutes / 60) % 24;
-      const endMinute = totalMinutes % 60;
-      const pad = n => n.toString().padStart(2, '0');
-      const endTime = `${pad(endHour)}:${pad(endMinute)}`;
-
-      // Prepare reservation data
-      const reservationData = {
-        id: `${modalCurrentSpot.id}_${date}_${time}`,
-        spotId: modalCurrentSpot.id,
-        date,
-        startTime: time,
-        endTime: endTime,
-        status: 'reserved',
-        type: modalCurrentSpot.type,
-        username: Office.context.mailbox.userProfile ? Office.context.mailbox.userProfile.emailAddress : 'unknown',
-        color: modalCurrentSpot.color,
-        parkingName: selectedParking
-      };
-
-      fetch('http://34.220.75.42/reservations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reservationData)
-      })
-      .then(async response => {
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
-          if (response.status === 409 && data.code === 'SPOT_TAKEN') {
-            reservationMsg.style.color = '#d32f2f';
-            reservationMsg.textContent = data.message || 'The spot is taken at the requested time.';
+      console.log(Office.context.mailbox);
+      Office.context.mailbox.item.body.prependAsync(
+        `Reserved ${modalCurrentSpot.id} on ${date} at ${time} for ${hours} hour(s) ${minutes} minute(s)`,
+        { coercionType: Office.CoercionType.Html },
+        function (result) {
+          if (result.status === Office.AsyncResultStatus.Succeeded) {
+            console.log("Body prepended!");
           } else {
-            reservationMsg.style.color = '#d32f2f';
-            reservationMsg.textContent = data.error || 'Failed to save reservation. Please try again.';
+            console.error(result.error.message);
           }
-          return;
         }
-        // Save to local state after successful backend save
-        reservations[modalCurrentSpot.id][dateTime] = { hours, minutes };
-        reservationMsg.style.color = '#388e3c';
-        reservationMsg.textContent = `\nReservation successful! Duration: ${hours} hour(s) ${minutes} minute(s)\n`;
-
-        Office.context.mailbox.item.body.prependAsync(
-          `Reserved ${modalCurrentSpot.id} on ${date} at ${time} for ${hours} hour(s) ${minutes} minute(s)`,
-          { coercionType: Office.CoercionType.Html },
-          function (result) {
-            if (result.status === Office.AsyncResultStatus.Succeeded) {
-              console.log("Body prepended!");
-            } else {
-              console.error(result.error.message);
-            }
-          }
-        );
-
-        setTimeout(() => {
-          reservationModal.style.display = 'none';
-          reservationMsg.textContent = '';
-          reservationDateInput.value = '';
-          reservationTimeInput.value = '';
-          reservationDurationHoursInput.value = '1';
-          reservationDurationMinutesInput.value = '0';
-          modalCurrentSpot = null;
-          renderSpots();
-        }, 1200);
-      })
-      .catch(err => {
-        console.error(err);
-      });
+      );
+      
+      setTimeout(() => {
+        reservationModal.style.display = 'none';
+        reservationMsg.textContent = '';
+        reservationDateInput.value = '';
+        reservationTimeInput.value = '';
+        reservationDurationHoursInput.value = '1';
+        reservationDurationMinutesInput.value = '0';
+        modalCurrentSpot = null;
+        renderSpots();
+      }, 1200);
     };
 
     // --- Render Functions ---
