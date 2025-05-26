@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Parking Map 2D</title>
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/Office.js" type="text/javascript"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gif.js.optimized/dist/gif.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -362,7 +364,7 @@
       modalCurrentSpot = null;
     };
 
-    reserveBtn.onclick = () => {
+    reserveBtn.onclick = async () => {
       if (!modalCurrentSpot) return;
       const date = reservationDateInput.value;
       const time = reservationTimeInput.value;
@@ -389,29 +391,55 @@
       reservationMsg.style.color = '#388e3c';
       reservationMsg.textContent = `Reservation successful! Duration: ${hours} hour(s) ${minutes} minute(s)`;
 
-      console.log(Office.context.mailbox);
-      Office.context.mailbox.item.body.prependAsync(
-        `Reserved ${modalCurrentSpot.id} on ${date} at ${time} for ${hours} hour(s) ${minutes} minute(s)`,
-        { coercionType: Office.CoercionType.Html },
-        function (result) {
-          if (result.status === Office.AsyncResultStatus.Succeeded) {
-            console.log("Body prepended!");
-          } else {
-            console.error(result.error.message);
-          }
-        }
-      );
+      const map_container = document.getElementById('map-container');
+      const gif = new GIF({
+        workers: 2,
+        quality: 10,
+        workerScript: 'https://cdn.jsdelivr.net/npm/gif.js.optimized/dist/gif.worker.js',
+        width: map_container.offsetWidth,
+        height: map_container.offsetHeight,
+        repeat: 0, // loop forever
+        background: '#ffffff'
+      });
       
-      setTimeout(() => {
-        reservationModal.style.display = 'none';
-        reservationMsg.textContent = '';
-        reservationDateInput.value = '';
-        reservationTimeInput.value = '';
-        reservationDurationHoursInput.value = '1';
-        reservationDurationMinutesInput.value = '0';
-        modalCurrentSpot = null;
-        renderSpots();
-      }, 1200);
+      // Capture map_container as canvas using html2canvas
+      const canvas = await html2canvas(map_container, { backgroundColor: null });
+      // Add frame to GIF (delay in ms)
+      gif.addFrame(canvas, { delay: 200 });
+
+      gif.on('finished', function(blob) {
+        // Convert blob to base64
+        const reader = new FileReader();
+        reader.onloadend = function() {
+          const base64data = reader.result; // This is a data URL with base64
+
+          Office.context.mailbox.item.body.prependAsync(
+            `<p>Reserved ${modalCurrentSpot.id} on ${date} at ${time} for ${hours} hour(s) ${minutes} minute(s)</p><img src="${base64data}" alt="Animated GIF" />`,
+            { coercionType: Office.CoercionType.Html },
+            function (result) {
+              if (result.status === Office.AsyncResultStatus.Succeeded) {
+                console.log("Body prepended!");
+              } else {
+                console.error(result.error.message);
+              }
+            }
+          );
+          
+          setTimeout(() => {
+            reservationModal.style.display = 'none';
+            reservationMsg.textContent = '';
+            reservationDateInput.value = '';
+            reservationTimeInput.value = '';
+            reservationDurationHoursInput.value = '1';
+            reservationDurationMinutesInput.value = '0';
+            modalCurrentSpot = null;
+            renderSpots();
+          }, 1200);
+
+        }
+        reader.readAsDataURL(blob);
+      });
+      gif.render();
     };
 
     // --- Render Functions ---
