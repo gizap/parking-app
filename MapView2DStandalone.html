@@ -170,7 +170,11 @@
       <label for="reservationDate">Select date:</label>
       <input type="date" id="reservationDate" style="margin:12px 0 12px 0;padding:6px 10px;font-size:1rem;" />
       <label for="reservationTime">Select time:</label>
-      <input type="time" id="reservationTime" style="margin:12px 0 24px 0;padding:6px 10px;font-size:1rem;" />
+      <input type="time" id="reservationTime" style="margin:12px 0 12px 0;padding:6px 10px;font-size:1rem;" />
+      <label for="reservationDurationHours">Duration (hours):</label>
+      <input type="number" id="reservationDurationHours" min="0" max="24" value="1" style="margin:12px 0 0 0;padding:6px 10px;font-size:1rem;width:60px;" />
+      <label for="reservationDurationMinutes" style="margin-left:8px;">Minutes:</label>
+      <input type="number" id="reservationDurationMinutes" min="0" max="59" value="0" style="margin:12px 0 24px 0;padding:6px 10px;font-size:1rem;width:60px;" />
       <button id="reserveBtn" style="background:#0066cc;color:#fff;padding:8px 18px;border:none;border-radius:6px;font-size:1rem;cursor:pointer;">Reserve</button>
       <div id="reservationMsg" style="margin-top:16px;color:#388e3c;font-weight:bold;"></div>
     </div>
@@ -346,6 +350,8 @@
     const reserveBtn = document.getElementById('reserveBtn');
     const reservationDateInput = document.getElementById('reservationDate');
     const reservationTimeInput = document.getElementById('reservationTime');
+    const reservationDurationHoursInput = document.getElementById('reservationDurationHours');
+    const reservationDurationMinutesInput = document.getElementById('reservationDurationMinutes');
     const reservationMsg = document.getElementById('reservationMsg');
     const modalSpotTitle = document.getElementById('modalSpotTitle');
 
@@ -354,6 +360,8 @@
       reservationMsg.textContent = '';
       reservationDateInput.value = '';
       reservationTimeInput.value = '';
+      reservationDurationHoursInput.value = '1';
+      reservationDurationMinutesInput.value = '0';
       modalCurrentSpot = null;
     };
 
@@ -361,9 +369,16 @@
       if (!modalCurrentSpot) return;
       const date = reservationDateInput.value;
       const time = reservationTimeInput.value;
-      if (!date || !time) {
+      const hours = reservationDurationHoursInput.value;
+      const minutes = reservationDurationMinutesInput.value;
+      if (!date || !time || (hours === '' && minutes === '')) {
         reservationMsg.style.color = '#d32f2f';
-        reservationMsg.textContent = 'Please select both date and time.';
+        reservationMsg.textContent = 'Please select date, time, and duration.';
+        return;
+      }
+      if ((parseInt(hours) === 0 && parseInt(minutes) === 0) || parseInt(hours) < 0 || parseInt(minutes) < 0 || parseInt(minutes) > 59) {
+        reservationMsg.style.color = '#d32f2f';
+        reservationMsg.textContent = 'Duration must be at least 1 minute and valid.';
         return;
       }
       const dateTime = `${date}T${time}`;
@@ -373,23 +388,30 @@
         reservationMsg.textContent = 'Spot already reserved for this date and time.';
         return;
       }
-      reservations[modalCurrentSpot.id][dateTime] = true;
+      reservations[modalCurrentSpot.id][dateTime] = { hours, minutes };
       reservationMsg.style.color = '#388e3c';
-      reservationMsg.textContent = 'Reservation successful!';
+      reservationMsg.textContent = `Reservation successful! Duration: ${hours} hour(s) ${minutes} minute(s)`;
 
-      const item = Office.context.mailbox.item;
-      let insertAt = document.getElementById("item-subject");
-      let label = document.createElement("b").appendChild(document.createTextNode("Subject: "));
-      insertAt.appendChild(label);
-      insertAt.appendChild(document.createElement("br"));
-      insertAt.appendChild(document.createTextNode(item.subject));
-      insertAt.appendChild(document.createElement("br"));
+      console.log(Office.context.mailbox);
+      Office.context.mailbox.item.body.appendOnSendAsync(
+        `Reserved ${modalCurrentSpot.id} on ${date} at ${time} for ${hours} hour(s) ${minutes} minute(s)`,
+        { coercionType: Office.CoercionType.Html },
+        function (result) {
+          if (result.status === Office.AsyncResultStatus.Succeeded) {
+            console.log("Content appended on send!");
+          } else {
+            console.error(result.error.message);
+          }
+        }
+      );
       
       setTimeout(() => {
         reservationModal.style.display = 'none';
         reservationMsg.textContent = '';
         reservationDateInput.value = '';
         reservationTimeInput.value = '';
+        reservationDurationHoursInput.value = '1';
+        reservationDurationMinutesInput.value = '0';
         modalCurrentSpot = null;
         renderSpots();
       }, 1200);
