@@ -391,11 +391,11 @@
       reservationMsg.style.color = '#388e3c';
       reservationMsg.textContent = `Reservation successful! Duration: ${hours} hour(s) ${minutes} minute(s)`;
 
-      const map_container = document.getElementById('map-container');
+      const map_container = document.querySelector('.map-container');
       const gif = new GIF({
         workers: 2,
         quality: 10,
-        workerScript: 'https://cdn.jsdelivr.net/npm/gif.js.optimized/dist/gif.worker.js',
+        workerScript: './gif.worker.js',
         width: map_container.offsetWidth,
         height: map_container.offsetHeight,
         repeat: 0, // loop forever
@@ -412,8 +412,8 @@
         const reader = new FileReader();
         reader.onloadend = function() {
           const base64data = reader.result; // This is a data URL with base64
-
-          Office.context.mailbox.item.body.prependAsync(
+          console.log(base64data);
+          /*Office.context.mailbox.item.body.prependAsync(
             `<p>Reserved ${modalCurrentSpot.id} on ${date} at ${time} for ${hours} hour(s) ${minutes} minute(s)</p><img src="${base64data}" alt="Animated GIF" />`,
             { coercionType: Office.CoercionType.Html },
             function (result) {
@@ -434,7 +434,7 @@
             reservationDurationMinutesInput.value = '0';
             modalCurrentSpot = null;
             renderSpots();
-          }, 1200);
+          }, 1200);*/
 
         }
         reader.readAsDataURL(blob);
