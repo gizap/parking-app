@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Parking Map 2D</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/Office.js" type="text/javascript"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -375,6 +376,15 @@
       reservations[modalCurrentSpot.id][dateTime] = true;
       reservationMsg.style.color = '#388e3c';
       reservationMsg.textContent = 'Reservation successful!';
+
+      const item = Office.context.mailbox.item;
+      let insertAt = document.getElementById("item-subject");
+      let label = document.createElement("b").appendChild(document.createTextNode("Subject: "));
+      insertAt.appendChild(label);
+      insertAt.appendChild(document.createElement("br"));
+      insertAt.appendChild(document.createTextNode(item.subject));
+      insertAt.appendChild(document.createElement("br"));
+      
       setTimeout(() => {
         reservationModal.style.display = 'none';
         reservationMsg.textContent = '';
