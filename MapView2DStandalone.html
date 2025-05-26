@@ -413,7 +413,7 @@
         reader.onloadend = function() {
           const base64data = reader.result; // This is a data URL with base64
           console.log(base64data);
-          /*Office.context.mailbox.item.body.prependAsync(
+          Office.context.mailbox.item.body.prependAsync(
             `<p>Reserved ${modalCurrentSpot.id} on ${date} at ${time} for ${hours} hour(s) ${minutes} minute(s)</p><img src="${base64data}" alt="Animated GIF" />`,
             { coercionType: Office.CoercionType.Html },
             function (result) {
@@ -434,7 +434,7 @@
             reservationDurationMinutesInput.value = '0';
             modalCurrentSpot = null;
             renderSpots();
-          }, 1200);*/
+          }, 1200);
 
         }
         reader.readAsDataURL(blob);
