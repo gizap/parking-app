@@ -393,12 +393,12 @@
       reservationMsg.textContent = `Reservation successful! Duration: ${hours} hour(s) ${minutes} minute(s)`;
 
       console.log(Office.context.mailbox);
-      Office.context.mailbox.item.body.appendOnSendAsync(
+      Office.context.mailbox.item.body.prependAsync(
         `Reserved ${modalCurrentSpot.id} on ${date} at ${time} for ${hours} hour(s) ${minutes} minute(s)`,
         { coercionType: Office.CoercionType.Html },
         function (result) {
           if (result.status === Office.AsyncResultStatus.Succeeded) {
-            console.log("Content appended on send!");
+            console.log("Body prepended!");
           } else {
             console.error(result.error.message);
           }
