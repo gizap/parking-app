@@ -392,20 +392,110 @@
       reservationMsg.textContent = `Reservation successful! Duration: ${hours} hour(s) ${minutes} minute(s)`;
 
       const map_container = document.querySelector('.map-container');
+      const parking_layout = map_container.querySelector('.parking-layout');
       const gif = new GIF({
         workers: 2,
         quality: 10,
         workerScript: './gif.worker.js',
-        width: map_container.offsetWidth,
-        height: map_container.offsetHeight,
+        width: parking_layout.offsetWidth,
+        height: parking_layout.offsetHeight,
         repeat: 0, // loop forever
         background: '#ffffff'
       });
-      
-      // Capture map_container as canvas using html2canvas
-      const canvas = await html2canvas(map_container, { backgroundColor: null });
-      // Add frame to GIF (delay in ms)
-      gif.addFrame(canvas, { delay: 200 });
+
+      // --- Arrow Animation + Circle Highlight using Canvas Overlay ---
+      const labelEl = Array.from(parking_layout.querySelectorAll('.label')).find(l => l.textContent.includes('חניון מקורה'));
+      const spotEl = Array.from(parking_layout.querySelectorAll('.parking-spot')).find(s => s.title && s.title.startsWith(modalCurrentSpot.id));
+      if (labelEl && spotEl) {
+        const layoutRect = parking_layout.getBoundingClientRect();
+        const labelRect = labelEl.getBoundingClientRect();
+        const spotRect = spotEl.getBoundingClientRect();
+        const start = {
+          x: labelRect.left + labelRect.width / 2 - layoutRect.left,
+          y: labelRect.top + labelRect.height / 2 - layoutRect.top
+        };
+        const end = {
+          x: spotRect.left + spotRect.width / 2 - layoutRect.left,
+          y: spotRect.top + spotRect.height / 2 - layoutRect.top
+        };
+        const frames = 8;
+        for (let i = 1; i <= frames; i++) {
+          // Create canvas overlay
+          let overlay = document.createElement('canvas');
+          overlay.width = parking_layout.offsetWidth;
+          overlay.height = parking_layout.offsetHeight;
+          overlay.style.position = 'absolute';
+          overlay.style.left = '0';
+          overlay.style.top = '0';
+          overlay.style.pointerEvents = 'none';
+          overlay.style.zIndex = 9999;
+          overlay.id = 'arrow-canvas-overlay';
+          parking_layout.appendChild(overlay);
+
+          const ctx = overlay.getContext('2d');
+          // Arrow progress
+          const progress = i / frames;
+          const curr = {
+            x: start.x + (end.x - start.x) * progress,
+            y: start.y + (end.y - start.y) * progress
+          };
+          // Draw arrow line
+          ctx.save();
+          ctx.strokeStyle = '#d32f2f';
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.moveTo(start.x, start.y);
+          ctx.lineTo(curr.x, curr.y);
+          ctx.stroke();
+
+          // Draw arrowhead only on last frame
+          if (i === frames) {
+            const angle = Math.atan2(end.y - start.y, end.x - start.x);
+            const arrowLen = 24;
+            const arrowAngle = Math.PI / 7;
+            ctx.beginPath();
+            ctx.moveTo(curr.x, curr.y);
+            ctx.lineTo(
+              curr.x - arrowLen * Math.cos(angle - arrowAngle),
+              curr.y - arrowLen * Math.sin(angle - arrowAngle)
+            );
+            ctx.moveTo(curr.x, curr.y);
+            ctx.lineTo(
+              curr.x - arrowLen * Math.cos(angle + arrowAngle),
+              curr.y - arrowLen * Math.sin(angle + arrowAngle)
+            );
+            ctx.stroke();
+          }
+          ctx.restore();
+
+          // Draw highlight circle on the reserved spot
+          ctx.save();
+          ctx.strokeStyle = '#1976d2';
+          ctx.lineWidth = 6;
+          ctx.shadowColor = '#1976d2';
+          ctx.shadowBlur = 8;
+          const circleRadius = Math.max(spotRect.width, spotRect.height) * 0.7;
+          ctx.beginPath();
+          ctx.arc(end.x, end.y, circleRadius, 0, 2 * Math.PI);
+          ctx.stroke();
+          ctx.restore();
+
+          // Wait for DOM update
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise(r => setTimeout(r, 10));
+          // Capture frame
+          // eslint-disable-next-line no-await-in-loop
+          const frameCanvas = await html2canvas(parking_layout, { backgroundColor: null });
+          gif.addFrame(frameCanvas, { delay: i === frames ? 300 : 80 });
+
+          // Remove overlay
+          overlay.remove();
+        }
+      } else {
+        // fallback: just capture one frame
+        const canvas = await html2canvas(map_container, { backgroundColor: null });
+        gif.addFrame(canvas, { delay: 200 });
+      }
 
       gif.on('finished', function(blob) {
         // Convert blob to base64
@@ -413,6 +503,9 @@
         reader.onloadend = function() {
           const base64data = reader.result; // This is a data URL with base64
           console.log(base64data);
+          const outputDiv = document.getElementById('output');
+          outputDiv.innerHTML = `<p>Reserved ${modalCurrentSpot.id} on ${date} at ${time} for ${hours} hour(s) ${minutes} minute(s}</p><img src="${base64data}" alt="Animated GIF" />`;
+          
           Office.context.mailbox.item.body.prependAsync(
             `<p>Reserved ${modalCurrentSpot.id} on ${date} at ${time} for ${hours} hour(s) ${minutes} minute(s)</p><img src="${base64data}" alt="Animated GIF" />`,
             { coercionType: Office.CoercionType.Html },
@@ -607,5 +700,6 @@
     // --- Initial Render ---
     renderAll();
   </script>
+  <div id="output"></div>
 </body>
 </html>
